@@ -62,7 +62,7 @@ public class TOTP {
     }
 
     /**
-     * 以"0"部足6位
+     * 以"0"补足6位
      *
      * @param s
      * @return
