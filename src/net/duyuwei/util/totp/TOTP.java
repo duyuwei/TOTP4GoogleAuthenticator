@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
 
 /**
+ * HOTP(K,C) = Truncate(HMAC-SHA-1(K,C))
  * Created by duyuwei on 16/7/28.
  */
 public class TOTP {
@@ -16,6 +17,7 @@ public class TOTP {
 
     public TOTP() {
         try {
+            //HMAC: H(K XOR opad, H(K XOR ipad, text))
             mac = Mac.getInstance("HmacSHA1");
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
@@ -23,32 +25,48 @@ public class TOTP {
 
     }
 
+    /**
+     * @param key        base32加密后私钥
+     * @param systemTime 当前时间
+     * @param invertal   时间差
+     * @return GoogleAuthenticator Number Code
+     * @throws Exception
+     */
     public String getDynamicCode(String key, long systemTime, int invertal) throws Exception {
+        //用密钥和当前step计算
         byte[] hash = getHmacSHA1(key, (systemTime - invertal) / 30000);
-        System.out.println("data: " + hash);
-        for (byte b : hash) {
-            System.out.println(b);
-        }
-        System.out.println("data19: " + hash[19]);
-        System.out.println(Integer.toBinaryString(hash[19]));
-        int offset = hash[19] & 0xf;//通过对最后一个字节的低4位二进制位建立索引，索引范围为  （0-15）+4  ，正好20个字节。
-        System.out.println("offset: " + offset);
-        System.out.println("offset.bin: " + Integer.toBinaryString(offset));
-        int binary = ((hash[offset] & 0x7f) << 24) | ((hash[offset + 1] & 0xff) << 16) | ((hash[offset + 2] & 0xff) << 8) | (hash[offset + 3] & 0xff);
+        //将最后一个字节的低4位二进制作为索引,索引范围为0-15
+        int offset = hash[19] & 0xf;
         //然后计算索引指向的连续4字节空间生成int整型数据。
-        System.out.println(binary);
-        int otp = binary % 1000000;//对获取到的整型数据进行模运算(取后六位)
-        return addZeros(Integer.toString(otp));//再对结果进行补全（长度不够6位，在首位补零）得到长度为6的字符串
+        int binary = ((hash[offset] & 0x7f) << 24) | ((hash[offset + 1] & 0xff) << 16) | ((hash[offset + 2] & 0xff) << 8) | (hash[offset + 3] & 0xff);
+        //对获取到的整型数据进行模运算(取后六位)
+        int otp = binary % 1000000;
+        //对结果进行补全（长度不够6位，在首位补零）
+        return addZeros(Integer.toString(otp));
     }
 
+    /**
+     * 计算HMAC-SHA-1
+     *
+     * @param secret 秘钥
+     * @param msg    需要加密内容
+     * @return
+     * @throws Exception
+     */
     private byte[] getHmacSHA1(String secret, long msg) throws Exception {
-        SecretKey secretKey = new SecretKeySpec(Base32String.decode(secret), "");
+        SecretKey secretKey = new SecretKeySpec(Base32String.decode(secret), "RAW");
         mac.reset();
         mac.init(secretKey);
         byte[] value = ByteBuffer.allocate(8).putLong(msg).array();
         return mac.doFinal(value);
     }
 
+    /**
+     * 以"0"部足6位
+     *
+     * @param s
+     * @return
+     */
     private String addZeros(String s) {
         if (s.length() < 6) {
             s = "0" + s;
