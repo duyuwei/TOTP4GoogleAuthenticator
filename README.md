@@ -8,4 +8,7 @@
 
 ## 相关内容
 
-//TODO
+
+* [Google Authenticator](https://en.wikipedia.org/wiki/Google_Authenticator) : 用户用于生成动态密码,类似软件有Authy,1Password等
+* [一次性密码](https://en.wikipedia.org/wiki/Time-based_One-time_Password_Algorithm) : 即动态一次性密码
+
